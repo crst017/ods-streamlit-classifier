@@ -1,51 +1,73 @@
 import streamlit as st
-import joblib
-import pandas as pd
+import pickle
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from nltk.tokenize import RegexpTokenizer
-import nltk
 
-# Descargas necesarias para el servidor de Streamlit
+# --- CONFIGURACIÓN INICIAL ---
+st.set_page_config(page_title="Clasificador ODS AI", page_icon="🌍")
+
+# Descargas necesarias de NLTK (Streamlit Cloud las ejecutará al iniciar)
 nltk.download('stopwords')
 
-# --- COPIA AQUÍ TU FUNCIÓN DE PREPROCESAMIENTO DEL HTML ---
-stop_words_es = set(stopwords.words('spanish'))
-regex_tokenizer = RegexpTokenizer(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ]+')
+# --- COMPONENTES DEL PREPROCESAMIENTO ---
+stop_words = set(stopwords.words('spanish'))
 stemmer = SnowballStemmer('spanish')
+tokenizer = RegexpTokenizer(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ]+')
 
-def preprocesar_texto(texto):
-    texto = str(texto).lower()
-    tokens = regex_tokenizer.tokenize(texto)
-    tokens_procesados = [stemmer.stem(word) for word in tokens if word not in stop_words_es]
-    return ' '.join(tokens_procesados)
+def preprocesar_texto_final(texto):
+    if not isinstance(texto, str):
+        return ""
+    tokens = tokenizer.tokenize(texto.lower())
+    # Filtrar stopwords y aplicar stemming en un solo paso
+    tokens_limpios = [stemmer.stem(token) for token in tokens if token not in stop_words]
+    return " ".join(tokens_limpios)
 
-# --- INTERFAZ DE STREAMLIT ---
-st.set_page_config(page_title="Clasificador ODS", page_icon="🌍")
-st.title("Clasificador de texto según Objetivos de Desarrollo Sostenible (ODS)")
+# --- DICCIONARIO DE MAPEO ODS ---
+diccionario_ods = {
+    1: "Fin de la pobreza",
+    2: "Hambre cero",
+    3: "Salud y bienestar",
+    4: "Educación de calidad",
+    5: "Igualdad de género",
+    6: "Agua limpia y saneamiento",
+    7: "Energía asequible y no contaminante",
+    8: "Trabajo decente y crecimiento económico",
+    9: "Industria, innovación e infraestructura",
+    10: "Reducción de las desigualdades",
+    11: "Ciudades y comunidades sostenibles",
+    12: "Producción y consumo responsables",
+    13: "Acción por el clima",
+    14: "Vida submarina",
+    15: "Vida de ecosistemas terrestres",
+    16: "Paz, justicia e instituciones sólidas"
+}
 
-@st.cache_resource
-def load_model():
-    return joblib.load('modelo_ods_final.pkl')
+# --- CARGA DEL MODELO ---
+@st.cache_resource # Esto evita que el modelo se recargue cada vez que el usuario hace clic
+def cargar_modelo():
+    with open('modelo_ods_final.pkl', 'rb') as f:
+        return pickle.load(f)
 
-model = load_model()
+try:
+    model = cargar_modelo()
+except Exception as e:
+    st.error(f"Error al cargar el modelo: {e}")
+    st.stop()
 
-texto_usuario = st.text_area("Ingrese el texto a clasificar:", height=150)
+# --- INTERFAZ DE USUARIO ---
+st.title("🌍 Clasificador de Objetivos de Desarrollo Sostenible (ODS)")
+st.markdown("""
+Esta herramienta utiliza Inteligencia Artificial para identificar a qué ODS pertenece un texto. 
+Pega un párrafo descriptivo de un proyecto o iniciativa abajo.
+""")
+
+texto_usuario = st.text_area(
+    "Ingresa el texto a analizar:",
+    placeholder="Ejemplo: Instalación de sistemas de riego eficiente para agricultores locales...",
+    height=200
+)
 
 if st.button("Clasificar Texto"):
-    if texto_usuario:
-        prediccion = model.predict([texto_usuario])[0]
-        probs = model.predict_proba([texto_usuario])[0]
-        confianza = max(probs)
-        
-        st.subheader(f"Resultado: Tópico {prediccion}")
-        st.write(f"**Confianza del modelo:** {confianza:.2%}")
-        
-        # Mostrar gráfico de barras de confianza
-        df_probs = pd.DataFrame({
-            'Tópico': model.classes_,
-            'Probabilidad': probs
-        })
-        st.bar_chart(df_probs.set_index('Tópico'))
-    else:
-        st.error("Por favor, ingrese un texto.")
+    if texto_usuario.
