@@ -12,16 +12,14 @@ st.set_page_config(page_title="Clasificador ODS AI", page_icon="🌍")
 nltk.download('stopwords')
 
 # --- COMPONENTES DEL PREPROCESAMIENTO ---
-# Importante: Estas variables deben coincidir con las que usaste en el entrenamiento
 stop_words = set(stopwords.words('spanish'))
 stemmer = SnowballStemmer('spanish')
 tokenizer = RegexpTokenizer(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ]+')
 
-def preprocesar_texto_final(texto):
+def preprocesar_texto(texto):
     if not isinstance(texto, str):
         return ""
     tokens = tokenizer.tokenize(texto.lower())
-    # Filtrar stopwords y aplicar stemming en un solo paso
     tokens_limpios = [stemmer.stem(token) for token in tokens if token not in stop_words]
     return " ".join(tokens_limpios)
 
@@ -92,7 +90,7 @@ if st.button("Clasificar Texto"):
         # Obtener los índices de los 3 valores más altos
         top_3_indices = probs.argsort()[-3:][::-1]
         
-        for idx in top_3_indices:
+        for idx in top_3_indices: 
             ods_n = model.classes_[idx]
             prob_n = probs[idx]
             nombre_n = diccionario_ods.get(ods_n, "Desconocido")
