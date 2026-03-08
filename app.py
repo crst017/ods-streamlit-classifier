@@ -12,6 +12,7 @@ st.set_page_config(page_title="Clasificador ODS AI", page_icon="🌍")
 nltk.download('stopwords')
 
 # --- COMPONENTES DEL PREPROCESAMIENTO ---
+# Importante: Estas variables deben coincidir con las que usaste en el entrenamiento
 stop_words = set(stopwords.words('spanish'))
 stemmer = SnowballStemmer('spanish')
 tokenizer = RegexpTokenizer(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ]+')
@@ -70,4 +71,45 @@ texto_usuario = st.text_area(
 )
 
 if st.button("Clasificar Texto"):
-    if texto_usuario.
+    if texto_usuario.strip():
+        # 1. Predicción de clase y probabilidades
+        prediccion_num = model.predict([texto_usuario])[0]
+        probs = model.predict_proba([texto_usuario])[0]
+        
+        # 2. Obtener nombre del ODS principal
+        nombre_ods_principal = diccionario_ods.get(prediccion_num, "ODS no identificado")
+        confianza_principal = max(probs)
+
+        # 3. Mostrar Resultado Principal
+        st.success(f"### Resultado Principal: ODS {prediccion_num}")
+        st.subheader(f"**{nombre_ods_principal}**")
+        st.metric("Nivel de Confianza", f"{confianza_principal:.2%}")
+
+        # 4. Mostrar Top 3 de ODS relacionados
+        st.divider()
+        st.write("#### Análisis de relevancia (Top 3):")
+        
+        # Obtener los índices de los 3 valores más altos
+        top_3_indices = probs.argsort()[-3:][::-1]
+        
+        for idx in top_3_indices:
+            ods_n = model.classes_[idx]
+            prob_n = probs[idx]
+            nombre_n = diccionario_ods.get(ods_n, "Desconocido")
+            
+            # Crear columnas para una visualización limpia
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.write(f"**ODS {ods_n}**: {nombre_n}")
+                st.progress(float(prob_n))
+            with col2:
+                st.write(f"{prob_n:.1%}")
+                
+        if confianza_principal < 0.35:
+            st.warning("⚠️ **Nota:** La confianza es baja. El texto podría ser muy corto o tocar múltiples temas a la vez.")
+            
+    else:
+        st.warning("Por favor, ingresa un texto para poder clasificarlo.")
+
+# --- PIE DE PÁGINA ---
+st.sidebar.info("Modelo entrenado con el dataset OSDG Community (Zenodo).")
